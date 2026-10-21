@@ -28,8 +28,9 @@ impl Fonts {
     fn load() -> Self {
         Fonts(figcraft_text::fontdb::family_names().into_iter().map(|f| f.to_lowercase()).collect())
     }
+    /// Installed, or another name for an installed family (`-apple-system` on macOS).
     fn has(&self, family: &str) -> bool {
-        self.0.contains(&family.to_lowercase())
+        self.0.contains(&family.to_lowercase()) || self.0.contains(&figcraft_text::fontdb::resolve_family(family).to_lowercase())
     }
 }
 
