@@ -513,6 +513,37 @@ fn boolean_property_default_follows_across_variants() {
     healthy(&s);
 }
 
+/// A main component nested in another keeps its own boolean defaults: a same-named property on
+/// the outer component doesn't show or hide the inner one's layers.
+#[test]
+fn boolean_property_default_stops_at_a_nested_main_component() {
+    let mut s = Session::new();
+    let outer = idv(&ex(&mut s, "frame.create", json!({"x": 0, "y": 0, "width": 300, "height": 200, "name": "Outer"})));
+    let a = idv(&ex(&mut s, "text.create", json!({"text": "A", "x": 10, "y": 10, "parent": outer})));
+    let inner = idv(&ex(&mut s, "frame.create", json!({"x": 10, "y": 60, "width": 120, "height": 80, "parent": outer, "name": "Inner"})));
+    let b = idv(&ex(&mut s, "text.create", json!({"text": "B", "x": 10, "y": 10, "parent": inner})));
+    let inner = idv(&ex(&mut s, "component.create", json!({"ids": [inner]})));
+    ex(&mut s, "component.addProperty", json!({"id": inner, "name": "Show", "type": "boolean", "default": true, "layer": b}));
+    let outer = idv(&ex(&mut s, "component.create", json!({"ids": [outer]})));
+    ex(&mut s, "component.addProperty", json!({"id": outer, "name": "Show", "type": "boolean", "default": true, "layer": a}));
+    ex(&mut s, "component.editProperty", json!({"id": outer, "name": "Show", "default": false}));
+    assert!(!node(&s, a).visible);
+    assert!(node(&s, b).visible, "the nested main's layer keeps its own default");
+    assert_eq!(bool_default(&s, inner, "Show"), Some(true));
+    // Hiding the outer component's bound layer directly leaves the nested main alone too.
+    ex(&mut s, "node.set", json!({"id": a, "props": {"visible": true}}));
+    ex(&mut s, "node.set", json!({"id": a, "props": {"visible": false}}));
+    assert_eq!(bool_default(&s, outer, "Show"), Some(false));
+    assert!(node(&s, b).visible);
+    assert_eq!(bool_default(&s, inner, "Show"), Some(true));
+    // And the nested main's own edits stay its own.
+    ex(&mut s, "node.set", json!({"id": b, "props": {"visible": false}}));
+    assert_eq!(bool_default(&s, inner, "Show"), Some(false));
+    assert_eq!(bool_default(&s, outer, "Show"), Some(false));
+    assert!(!node(&s, a).visible);
+    healthy(&s);
+}
+
 #[test]
 fn push_changes_to_main() {
     let mut s = Session::new();

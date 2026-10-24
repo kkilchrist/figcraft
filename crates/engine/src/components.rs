@@ -1245,11 +1245,12 @@ pub fn set_boolean_default(doc: &mut Document, comps: &[NodeId], name: &str, val
             props.insert(name.to_string(), PropDef::Boolean { default: value });
             out.push(c);
         }
-        // The main's own layers (not those of instances nested in it, which follow their mains).
+        // The main's own layers (not those of instances nested in it, which follow their mains, or
+        // of main components nested in it, which have their own properties).
         let layers: Vec<NodeId> = doc
             .subtree(c)
             .into_iter()
-            .filter(|d| *d != c && !inside_instance(doc, *d))
+            .filter(|d| *d != c && !inside_instance(doc, *d) && owning_component(doc, *d) == Some(c))
             .filter(|d| doc.node(*d).is_some_and(|n| n.visible != value && n.prop_refs.get("visible").map(String::as_str) == Some(name)))
             .collect();
         for d in layers {
