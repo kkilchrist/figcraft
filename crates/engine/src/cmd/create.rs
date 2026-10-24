@@ -200,7 +200,13 @@ pub(crate) fn path_network(cmd: &str, d: &str, width: Option<f64>, height: Optio
     if network.segments.is_empty() {
         return Err(empty());
     }
-    Ok(PathShape { network, width: bb.width() * sx, height: bb.height() * sy, offset: (bb.x0, bb.y0) })
+    // The box is finite, but a handle outside it can scale past f64 (`C2.25 0 0 0 0 0` at width 1e308).
+    let (w, h) = (bb.width() * sx, bb.height() * sy);
+    let ok = |p: (f64, f64)| p.0.is_finite() && p.1.is_finite();
+    if !(ok((w, h)) && network.vertices.iter().all(|v| ok((v.x, v.y))) && network.segments.iter().all(|s| ok(s.ta) && ok(s.tb))) {
+        return Err(bad(cmd, "`path` has coordinates too large to draw"));
+    }
+    Ok(PathShape { network, width: w, height: h, offset: (bb.x0, bb.y0) })
 }
 
 /// How much a vector's path is scaled to take the size asked for: with both sides, each scales

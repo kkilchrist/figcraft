@@ -143,6 +143,9 @@ fn data_that_cant_draw_is_refused_and_nothing_changes() {
         (json!({"path": "M5 5"}), "draws nothing"),
         (json!({"path": "M5 5 L5 5 Z"}), "draws nothing"),
         (json!({"path": "M0 0 L1e308 0 L-1e308 0"}), "too large"),
+        // A finite box whose handle lies outside it: the size scales the handle past f64.
+        (json!({"path": "M0 0 C2.25 0 0 0 0 0", "width": 1e308}), "too large"),
+        (json!({"path": "M0 0 C0 2.25 0 0 0 0", "height": 1e308}), "too large"),
         (json!({"path": 5}), "must be SVG path data"),
         (json!({"path": null}), "must be SVG path data"),
         (json!({"path": "M0 0 L10 10", "width": 0}), "positive"),
@@ -156,6 +159,9 @@ fn data_that_cant_draw_is_refused_and_nothing_changes() {
         assert!(msg.contains(says), "{props}: {msg}");
         assert_eq!(s.doc().unwrap().node(v).unwrap(), &before, "{props} changed nothing");
     }
+    // node.create refuses the same handles.
+    let msg = bad_msg(s.execute("node.create", &json!({"type": "vector", "path": "M0 0 C2.25 0 0 0 0 0", "width": 1e308})));
+    assert!(msg.contains("too large"), "{msg}");
     // A horizontal line can still be given height 0, as create allows.
     ex(&mut s, "node.set", json!({"ids": [v], "props": {"path": "M0 0 L10 0", "height": 0}}));
     assert_eq!(frame(&s, v).2, 10.0);
